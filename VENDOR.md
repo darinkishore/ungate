@@ -29,3 +29,9 @@ mappings. Hidden/non-API Codex models are omitted. Failed or truncated catalogue
 leave the registry intact. The refresh route stays on the local administration
 server. Cursor's built-in model IDs still bypass its OpenAI URL override;
 these distinct IDs are required to use subscriptions through Ungate.
+
+Claude request and catalogue metadata use the same pinned client version in
+`config.claudeCode.userAgent`. Version 2.1.289 matches the installed Claude Code
+and upstream release checked on 2026-10-05. Opus 5.5 rejected the previous 2.1.9
+metadata with an explicit minimum-version error (2.1.280). Refresh this pin
+against an actual upstream release when provider compatibility requires it.

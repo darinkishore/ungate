@@ -50,7 +50,7 @@ async function makeClaudeCodeRequest(
 				'anthropic-dangerous-direct-browser-access': 'true',
 				'anthropic-version': '2023-06-01',
 				'Content-Type': 'application/json',
-				'User-Agent': 'claude-cli/2.1.9 (external, claude-vscode, agent-sdk/0.2.7)',
+				'User-Agent': config.claudeCode.userAgent,
 				'x-app': 'cli',
 				...RequestBuilder.getStainlessHeaders()
 			},
@@ -87,7 +87,7 @@ async function makeClaudeCodeRequest(
 							'anthropic-dangerous-direct-browser-access': 'true',
 							'anthropic-version': '2023-06-01',
 							'Content-Type': 'application/json',
-							'User-Agent': 'claude-cli/2.1.9 (external, claude-vscode, agent-sdk/0.2.7)',
+							'User-Agent': config.claudeCode.userAgent,
 							'x-app': 'cli',
 							...RequestBuilder.getStainlessHeaders()
 						},

@@ -61,7 +61,7 @@ export class SubscriptionModels {
 					Authorization: `Bearer ${credentials.accessToken}`,
 					'anthropic-version': '2023-06-01',
 					'anthropic-beta': `${config.anthropic.beta.oauth},${config.anthropic.beta.claudeCode}`,
-					'User-Agent': 'claude-cli/2.1.9 (external, claude-vscode, agent-sdk/0.2.7)',
+					'User-Agent': config.claudeCode.userAgent,
 					'x-app': 'cli'
 				},
 				provider

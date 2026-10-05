@@ -23,6 +23,8 @@ export const config = {
 		baseUrlChina: MINIMAX_BASE_URLS.china
 	},
 	claudeCode: {
+		// Pin client metadata centrally: newer models reject the old 2.1.9 fingerprint.
+		userAgent: 'claude-cli/2.1.289 (external, claude-vscode)',
 		systemPrompt: "You are Claude Code, Anthropic's official CLI for Claude."
 	},
 	openai: {
