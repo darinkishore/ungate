@@ -1,9 +1,9 @@
 {
 	"name": "ungate",
-	"displayName": "Ungate",
+	"displayName": "Ungate (Dusk)",
 	"description": "Use Claude, GPT, or MiniMax subscriptions in Cursor instead of paying for API tokens",
 	"version": "1.7.12",
-	"publisher": "orchidfiles",
+	"publisher": "darinkishore",
 	"license": "MIT",
 	"pricing": "Free",
 	"author": {

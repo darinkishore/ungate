@@ -138,7 +138,7 @@ export class TunnelManager {
 	}
 
 	private spawnTunnel(port: number): void {
-		const t = Tunnel.quick(`http://localhost:${port}`, {
+		const t = Tunnel.quick(`http://127.0.0.1:${port + 1}`, {
 			'--config': getCloudflaredConfigArg(),
 			'--edge-ip-version': '4'
 		});

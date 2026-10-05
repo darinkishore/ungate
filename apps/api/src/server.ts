@@ -8,6 +8,7 @@ const BODY_LIMIT_BYTES = 256 * 1024 * 1024;
 import { getConfig } from './config';
 import { getDb } from './database/index';
 import { Settings } from './database/settings';
+import { createPublicServer } from './public-server';
 import analyticsPlugin from './routes/analytics';
 import anthropicPlugin from './routes/anthropic';
 import authPlugin from './routes/auth';
@@ -53,7 +54,10 @@ export async function startServer(): Promise<void> {
 	await app.register(settingsPlugin);
 
 	globalThis.console.log(`[startup] listen ${config.port}...`);
-	await app.listen({ port: config.port, host: '0.0.0.0' });
+	if (config.port >= 65535) throw new Error('API port must leave room for the public listener at port + 1');
+	await app.listen({ port: config.port, host: '127.0.0.1' });
+	const publicApp = await createPublicServer();
+	await publicApp.listen({ port: config.port + 1, host: '127.0.0.1' });
 
 	// Always print port to stdout — extension parses this to detect the running port.
 	// Uses globalThis.console to bypass quiet mode.
