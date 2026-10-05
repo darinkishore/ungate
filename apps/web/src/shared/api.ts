@@ -117,6 +117,10 @@ export class Api {
 		return this.get('/settings');
 	}
 
+	static refreshModels(provider: 'claude' | 'openai'): Promise<{ ok: boolean; models: AppSettings['models'] }> {
+		return this.post('/models/refresh', { provider });
+	}
+
 	static updateSettings(settings: Partial<AppSettings>): Promise<{ ok: boolean }> {
 		return this.post('/settings', settings);
 	}

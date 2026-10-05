@@ -21,3 +21,11 @@ when building self-contained Node tooling on Dusk.
 Nix deploys the pinned vendor branch through ungate-src. The usual vendor bump
 workflow publishes and relocks the source. Never put credentials or runtime
 .ungate state in this repository.
+
+The local Models panel adds Refresh from account for Claude and ChatGPT. It
+fetches authenticated provider catalogues, creates readable `Ungate: <model>`
+IDs, and preserves saved reasoning/service tier choices and unrelated custom
+mappings. Hidden/non-API Codex models are omitted. Failed or truncated catalogues
+leave the registry intact. The refresh route stays on the local administration
+server. Cursor's built-in model IDs still bypass its OpenAI URL override;
+these distinct IDs are required to use subscriptions through Ungate.

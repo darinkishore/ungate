@@ -3,6 +3,7 @@ import { getProviderLabel, sleep } from '@ungate/shared/frontend';
 import IconCopy from 'virtual:icons/lucide/copy';
 import IconTrash2 from 'virtual:icons/lucide/trash-2';
 
+import { Api } from '$shared/api';
 import { getSavedSettingsModelId, saveSettingsModelId } from '$shared/vscode';
 
 import type { ModelMappingConfig, ModelMappingProvider } from '@ungate/shared/frontend';
@@ -29,6 +30,22 @@ let copiedId = $state<string | null>(null);
 let confirmDeleteModelId = $state<string | null>(null);
 let confirmDeleteIndex = $state<number | null>(null);
 let activeModelIndex = $state<number | null>(null);
+let refreshing = $state(false);
+let refreshError = $state<string | null>(null);
+
+async function refreshModels() {
+	if (selectedProvider === 'minimax') return;
+	refreshing = true;
+	refreshError = null;
+	try {
+		const result = await Api.refreshModels(selectedProvider);
+		onModelsChange(result.models);
+	} catch (error) {
+		refreshError = error instanceof Error ? error.message : 'Model refresh failed';
+	} finally {
+		refreshing = false;
+	}
+}
 
 const reasoningOptions: { label: string; value: ModelMappingConfig['reasoningBudget'] }[] = [
 	{ label: 'Default', value: null },
@@ -251,6 +268,15 @@ $effect(() => {
 			<p class="text-xs text-surface-400"> Use these IDs when adding custom models in Cursor. </p>
 		</div>
 		<div class="flex items-center gap-2">
+			{#if selectedProvider !== 'minimax'}
+				<button
+					class="btn btn-sm preset-filled-primary-500"
+					type="button"
+					onclick={() => void refreshModels()}
+					disabled={refreshing || saving || restarting}>
+					{refreshing ? 'Refreshing...' : 'Refresh from account'}
+				</button>
+			{/if}
 			<button
 				class="btn btn-sm preset-filled-primary-500"
 				type="button"
@@ -267,9 +293,9 @@ $effect(() => {
 		</div>
 	</div>
 
-	{#if error}
+	{#if error || refreshError}
 		<div class="card preset-tonal-error p-3 text-sm">
-			{error}
+			{error || refreshError}
 		</div>
 	{/if}
 

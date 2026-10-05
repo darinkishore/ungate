@@ -22,6 +22,14 @@ ungate/
 
 Cursor → Cloudflare Tunnel → Ungate API → Provider API. Cursor cannot call localhost, so a public tunnel URL is required. Ungate listens on a custom OpenAI Base URL, transforms requests into the target provider format and back.
 
+Vendor boundary: the administration listener binds loopback. Only the separate
+API-port-plus-one listener is tunneled, and every public route requires a proxy
+key. Never expose settings or authorization routes through it. The local
+`POST /models/refresh` imports authenticated subscription catalogues through
+`src/subscription-models.ts`; readable `Ungate: <display name>` aliases avoid
+Cursor's built-in routing bypass. Refresh preserves custom mappings and saved
+reasoning choices, and fails without replacing models on provider errors.
+
 ## apps/api — proxy server
 
 Fastify server, spawned by the extension as a child Node.js process.

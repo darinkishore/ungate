@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { isModelMappingProvider, isModelServiceTier, isReasoningBudgetTier, type AppSettings } from '@ungate/shared';
 
 import { Settings } from '../database/app-settings';
+import { SubscriptionModels } from '../subscription-models';
 import { logger } from '../utils/logger';
 
 import type { FastifyPluginCallback } from 'fastify';
@@ -50,6 +51,26 @@ function validateSettingsUpdate(payload: unknown): { ok: true; value: Partial<Ap
 }
 
 const plugin: FastifyPluginCallback = (app) => {
+	app.post('/models/refresh', async (request, reply) => {
+		const parsed = z.object({ provider: z.enum(['claude', 'openai']) }).safeParse(request.body);
+		if (!parsed.success) return reply.code(400).send({ ok: false, error: 'Select Claude or ChatGPT' });
+		try {
+			const models = await SubscriptionModels.refresh(parsed.data.provider);
+
+			return reply.send({ ok: true, models });
+		} catch (error) {
+			// Validation and transport errors must not expose provider data.
+			const message =
+				error instanceof z.ZodError
+					? 'Invalid provider model catalogue; no models were changed'
+					: error instanceof Error
+						? error.message
+						: 'Model refresh failed';
+
+			return reply.code(502).send({ ok: false, error: message });
+		}
+	});
+
 	app.get('/settings', async (_request, reply) => {
 		const settings = Settings.get();
 
