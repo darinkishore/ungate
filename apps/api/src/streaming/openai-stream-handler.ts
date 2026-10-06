@@ -54,6 +54,10 @@ export class OpenAIStreamHandler {
 		const { reader, streamId, modelName, context } = options;
 
 		let cancelled = false;
+		let finalized = false;
+		let finalUsage: StreamUsage | null = null;
+		let heartbeat: ReturnType<typeof setInterval> | undefined;
+		const stopHeartbeat = () => clearInterval(heartbeat);
 		let currentToolCall: ActiveToolCall | null = null;
 
 		const describeOpenTool = (): string => {
@@ -70,20 +74,31 @@ export class OpenAIStreamHandler {
 				let buffer = '';
 				let sentStart = false;
 				let toolCallIndex = 0;
-				let finalized = false;
 				let stopReason: AnthropicStopReason | null = null;
-				let finalUsage: StreamUsage | null = null;
 				let salvageFailed = false;
+				let lastWrite = Date.now();
 
 				const safeEnqueue = (data: Uint8Array) => {
 					try {
 						if (!cancelled) {
 							controller.enqueue(data);
+							lastWrite = Date.now();
 						}
 					} catch {
 						cancelled = true;
+						stopHeartbeat();
+						reader.cancel().catch(() => {});
 					}
 				};
+
+				// Empty OpenAI deltas keep both the tunnel and SSE consumers alive during
+				// silent thinking, without exposing reasoning or inventing answer text.
+				heartbeat = setInterval(() => {
+					if (!cancelled && !finalized && Date.now() - lastWrite >= 15_000) {
+						safeEnqueue(new TextEncoder().encode(AnthropicToOpenai.streamChunk(streamId, modelName)));
+					}
+				}, 15_000);
+				heartbeat.unref();
 
 				const flushToolCall = (mode: 'complete' | 'salvage'): boolean => {
 					if (!currentToolCall) {
@@ -152,6 +167,7 @@ export class OpenAIStreamHandler {
 					}
 
 					finalized = true;
+					stopHeartbeat();
 
 					logger.log(
 						`Stream stop_reason=${stopReason ?? 'none'} unexpectedEof=${unexpectedEof} completedToolCalls=${toolCallIndex}`
@@ -184,7 +200,8 @@ export class OpenAIStreamHandler {
 								inputTokens: finalUsage.input_tokens,
 								outputTokens: finalUsage.output_tokens,
 								stream: true,
-								latencyMs: Date.now() - context.startTime
+								latencyMs: Date.now() - context.startTime,
+								error: unexpectedEof ? 'Upstream stream ended unexpectedly' : undefined
 							},
 							finalUsage.cache_read_input_tokens,
 							finalUsage.cache_creation_input_tokens
@@ -341,6 +358,7 @@ export class OpenAIStreamHandler {
 						}
 					}
 				} finally {
+					stopHeartbeat();
 					try {
 						if (!cancelled) reader.cancel().catch(() => {});
 					} catch {
@@ -356,6 +374,22 @@ export class OpenAIStreamHandler {
 			},
 			cancel(reason) {
 				cancelled = true;
+				stopHeartbeat();
+				if (!finalized) {
+					Requests.record(
+						{
+							model: context.model,
+							source: context.source,
+							inputTokens: finalUsage?.input_tokens ?? 0,
+							outputTokens: finalUsage?.output_tokens ?? 0,
+							stream: true,
+							latencyMs: Date.now() - context.startTime,
+							error: 'Downstream cancelled stream before completion'
+						},
+						finalUsage?.cache_read_input_tokens,
+						finalUsage?.cache_creation_input_tokens
+					);
+				}
 				logger.error(`Downstream cancelled stream id=${streamId} reason=${String(reason)} ${describeOpenTool()}`);
 				reader.cancel(reason).catch(() => {});
 			}

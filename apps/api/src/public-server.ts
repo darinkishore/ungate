@@ -23,5 +23,6 @@ export async function createPublicServer() {
 	await app.register(anthropicPlugin);
 	await app.register(openaiPlugin);
 	await app.register(modelsPlugin);
+
 	return app;
 }

@@ -44,6 +44,7 @@ async function readStream(stream: ReadableStream): Promise<string> {
 describe('streaming-openai-stream-handler', () => {
 	afterEach(() => {
 		recordMock.mockReset();
+		vi.useRealTimers();
 	});
 
 	it('creates stream headers and processes text events with usage', async () => {
@@ -95,6 +96,55 @@ describe('streaming-openai-stream-handler', () => {
 		expect(output).toContain('"name":"read_file"');
 		expect(output).toContain('"finish_reason":"tool_calls"');
 		expect(output).toContain('data: [DONE]');
+	});
+
+	it('keeps silent thinking alive beyond 125 seconds without answer text and stops on completion', async () => {
+		vi.useFakeTimers();
+		let upstream!: ReadableStreamDefaultController<Uint8Array>;
+		const encoder = new TextEncoder();
+		const response = new Response(new ReadableStream<Uint8Array>({ start(controller) { upstream = controller; } }));
+		const { stream } = OpenAIStreamHandler.createStreamResponse(response, 'thinking', 'opus', {
+			model: 'opus', source: 'claude', startTime: Date.now(), reverseToolMapping: {}
+		});
+		const outputPromise = readStream(stream);
+		upstream.enqueue(encoder.encode('data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"private thinking"}}\n\n'));
+		await vi.advanceTimersByTimeAsync(150_000);
+		expect(recordMock).not.toHaveBeenCalled();
+		upstream.enqueue(encoder.encode('data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"answer"}}\n\ndata: {"type":"message_stop"}\n\n'));
+		upstream.close();
+		const output = await outputPromise;
+		const chunks = output.split('\n').filter(line => line.startsWith('data: {')).map(line => JSON.parse(line.slice(6)));
+		expect(chunks.filter(chunk => JSON.stringify(chunk.choices[0]?.delta) === '{}')).toHaveLength(11);
+		expect(output).not.toContain('private thinking');
+		expect(output.match(/"content":"answer"/g)).toHaveLength(1);
+		expect(output.match(/data: \[DONE\]/g)).toHaveLength(1);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('cleans heartbeat and cancels upstream on client cancellation', async () => {
+		vi.useFakeTimers();
+		const cancel = vi.fn();
+		const response = new Response(new ReadableStream<Uint8Array>({ cancel }));
+		const { stream } = OpenAIStreamHandler.createStreamResponse(response, 'cancel', 'opus', {
+			model: 'opus', source: 'claude', startTime: Date.now(), reverseToolMapping: {}
+		});
+		await stream.cancel();
+		await vi.advanceTimersByTimeAsync(150_000);
+		expect(cancel).toHaveBeenCalledTimes(1);
+		expect(vi.getTimerCount()).toBe(0);
+		expect(recordMock).toHaveBeenCalledTimes(1);
+		expect(recordMock.mock.calls[0][0].error).toContain('cancelled');
+	});
+
+	it('stops keepalives on an upstream error without emitting completion', async () => {
+		vi.useFakeTimers();
+		const response = new Response(new ReadableStream<Uint8Array>({ start(controller) { controller.error(new Error('upstream failure')); } }));
+		const { stream } = OpenAIStreamHandler.createStreamResponse(response, 'error', 'opus', {
+			model: 'opus', source: 'claude', startTime: Date.now(), reverseToolMapping: {}
+		});
+		await expect(readStream(stream)).rejects.toThrow('upstream failure');
+		await vi.advanceTimersByTimeAsync(150_000);
+		expect(vi.getTimerCount()).toBe(0);
 	});
 
 	it('throws when upstream response has no body', () => {
@@ -303,6 +353,6 @@ describe('streaming-openai-stream-handler', () => {
 		expect(errors).toContain('Downstream cancelled');
 		expect(errors).toContain('Write');
 		expect(errors).toContain('tu6');
-		expect(recordMock).not.toHaveBeenCalled();
+		expect(recordMock).toHaveBeenCalledWith(expect.objectContaining({ error: 'Downstream cancelled stream before completion' }), undefined, undefined);
 	});
 });

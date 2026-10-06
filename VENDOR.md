@@ -35,3 +35,9 @@ Claude request and catalogue metadata use the same pinned client version in
 and upstream release checked on 2026-10-05. Opus 5.5 rejected the previous 2.1.9
 metadata with an explicit minimum-version error (2.1.280). Refresh this pin
 against an actual upstream release when provider compatibility requires it.
+
+Claude's OpenAI stream adapter emits empty deltas every 15 seconds of downstream
+silence, including adaptive thinking. Keepalives contain no reasoning/answer text,
+usage, tools, or finish reason. This prevents the quick tunnel's 125-second read
+timeout. Timers stop at completion, cancellation, or errors. Cancelled streams
+are recorded as errors rather than disappearing from request analytics.
