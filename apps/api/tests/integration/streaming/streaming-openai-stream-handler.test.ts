@@ -63,6 +63,7 @@ describe('streaming-openai-stream-handler', () => {
 		});
 
 		expect(headers['Content-Type']).toBe('text/event-stream');
+		expect(headers['Cache-Control']).toBe('no-cache, no-transform');
 		expect(headers['x-request-id']).toBe('req_st1');
 
 		const output = await readStream(stream);

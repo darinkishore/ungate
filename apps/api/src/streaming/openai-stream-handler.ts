@@ -32,7 +32,7 @@ export class OpenAIStreamHandler {
 	static createStreamResponse(response: Response, streamId: string, modelName: string, context: RequestContext): StreamResult {
 		const headers: Record<string, string> = {
 			'Content-Type': 'text/event-stream',
-			'Cache-Control': 'no-cache',
+			'Cache-Control': 'no-cache, no-transform',
 			Connection: 'keep-alive',
 			'X-Accel-Buffering': 'no',
 			'x-request-id': `req_${streamId}`,

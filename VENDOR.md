@@ -41,3 +41,5 @@ silence, including adaptive thinking. Keepalives contain no reasoning/answer tex
 usage, tools, or finish reason. This prevents the quick tunnel's 125-second read
 timeout. Timers stop at completion, cancellation, or errors. Cancelled streams
 are recorded as errors rather than disappearing from request analytics.
+SSE responses also set Cache-Control: no-cache, no-transform so Cloudflare does
+not compress/buffer the small keepalive chunks before forwarding them.
